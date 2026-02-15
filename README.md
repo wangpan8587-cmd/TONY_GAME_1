@@ -400,3 +400,96 @@
 - **设计心得**：
   - 悬念页的关键不是信息量，而是“可感知的缺口”：给玩家一个明确的“还有东西没说完”。
   - 通过匿名代号、涂黑关系与克制交互（统一施工中），让玩家好奇但不困惑，也不会误以为有隐藏系统需要攻略。
+
+---
+
+## [2026-02-15] 修正：富二代分享解锁链接替换
+
+- **变更内容**：
+  - **精准定位**：修正了之前在 `assets/data.js` 描述字段误加链接的错误，改为在 `assets/app.js` 的 `onShareUnlock` 逻辑中进行拦截。
+  - **逻辑实现**：在生成分享文案 `shareText` 时增加判断：若当前解锁身份为 `fuerdai`（家族继承人），则将文案中的链接强制替换为 `http://i9n.cn/WiIwC`。
+  - **覆盖范围**：仅针对富二代角色生效，其他角色的分享链接仍保持动态生成（当前页面 URL），确保不影响正常功能。
+
+- **设计目的**：
+  - 满足特定角色的裂变/引流需求，确保“分享解锁”按钮复制到剪贴板的内容符合预期。
+  - 保持代码逻辑清晰，避免污染静态配置数据。
+
+---
+
+## [2026-02-15] 移动端小屏适配修复（救命优先：Identity/Playing/Ending/Failure）
+
+- **问题背景**：
+  - 小屏手机（尤其 iOS Safari / 带手势条机型）出现“界面看不全、底部按钮/选项被遮挡且无法滚动找回”的问题。
+  - 根因通常是 `100vh`（Tailwind `h-screen`）在移动端会把浏览器地址栏/底栏算进去 + 业务侧大量 `overflow-hidden` 禁止滚动，导致底部区域被裁切。
+
+- **总体策略（最小改动原则）**：
+  - 引入“动态视口高度”与“安全区”工具类，替换关键页面的 `h-screen`，并把 `pb-safe` 放在最合适的底部区域（底部导航/CTA）。
+  - 同时调整 `flex` 收缩关系（`min-h-0` / `shrink-0`），确保关键 CTA 与卡牌左右选项永远露出。
+
+- **全局补丁（index.html）**：
+  - 增加可选工具类（不改变未使用页面行为）：
+    - `.h-screen-fix`: `height: 100vh; height: 100dvh;`（优先用 `dvh` 贴合可视区）
+    - `.pb-safe`: `padding-bottom: env(safe-area-inset-bottom);`（避开手势条/安全区）
+  - 增加 `--vh` 兜底：使用 `window.innerHeight` 写入 `--vh` 并监听 `resize`，为不支持 `100dvh` 的环境提供后备。
+
+- **Identity（身份选择页）**：
+  - 身份选择页根容器：`h-screen` -> `h-screen-fix`。
+  - 身份详情弹窗：改为 `flex` 三段式（标题/描述/CTA），描述区允许滚动，底部 CTA 区加 `pb-safe`，保证“进入春节/返回”按钮在短屏必可见。
+
+- **Playing（GameBoard + SwipeCard）**：
+  - GameBoard 根容器：`h-screen` -> `h-screen-fix`，避免底部导航被浏览器 UI 吃掉。
+  - BottomNav 本体：根容器增加 `pb-safe`（最稳妥的安全区处理位置）。
+  - 卡牌区域：容器改为 `flex-1 min-h-0`，允许在短屏时收缩。
+  - 左右选项按钮：`choice-container` 增加 `shrink-0`，确保两侧选项在小屏下绝对露出、不被卡牌正文挤没。
+
+- **Ending/Failure（结算页）**：
+  - 根容器：`h-screen` -> `h-screen-fix`，并加 `pb-safe`。
+  - 底部 CTA 双保险：CTA 区额外包裹 `shrink-0 pb-safe`，防止未来改动导致按钮再次贴底/被遮挡。
+
+- **验收清单（必须验证）**：
+  - iPhone SE / 320x568：
+    - Identity 详情弹窗底部 CTA 可见可点。
+    - Playing 卡牌底部左右选项“选择：xxx”完整露出。
+    - BottomNav 不被手势条遮挡。
+    - Ending/Failure 底部 CTA 可见可点。
+  - iOS Safari / 微信内置浏览器：切换地址栏显示/隐藏时布局不跳出可用区域。
+
+---
+
+## [2026-02-15] 移动端小屏适配修复（救命优先：Identity/Playing/Ending/Failure）
+
+- **问题背景**：
+  - 小屏手机（尤其 iOS Safari / 带手势条机型）出现“界面看不全、底部按钮/选项被遮挡且无法滚动找回”的问题。
+  - 根因通常是 `100vh`（Tailwind `h-screen`）在移动端会把浏览器地址栏/底栏算进去 + 业务侧大量 `overflow-hidden` 禁止滚动，导致底部区域被裁切。
+
+- **总体策略（最小改动原则）**：
+  - 引入“动态视口高度”与“安全区”工具类，替换关键页面的 `h-screen`，并把 `pb-safe` 放在最合适的底部区域（底部导航/CTA）。
+  - 同时调整 `flex` 收缩关系（`min-h-0` / `shrink-0`），确保关键 CTA 与卡牌左右选项永远露出。
+
+- **全局补丁（index.html）**：
+  - 增加可选工具类（不改变未使用页面行为）：
+    - `.h-screen-fix`: `height: 100vh; height: 100dvh;`（优先用 `dvh` 贴合可视区）
+    - `.pb-safe`: `padding-bottom: env(safe-area-inset-bottom);`（避开手势条/安全区）
+  - 增加 `--vh` 兜底：使用 `window.innerHeight` 写入 `--vh` 并监听 `resize`，为不支持 `100dvh` 的环境提供后备。
+
+- **Identity（身份选择页）**：
+  - 身份选择页根容器：`h-screen` -> `h-screen-fix`。
+  - 身份详情弹窗：改为 `flex` 三段式（标题/描述/CTA），描述区允许滚动，底部 CTA 区加 `pb-safe`，保证“进入春节/返回”按钮在短屏必可见。
+
+- **Playing（GameBoard + SwipeCard）**：
+  - GameBoard 根容器：`h-screen` -> `h-screen-fix`，避免底部导航被浏览器 UI 吃掉。
+  - BottomNav 本体：根容器增加 `pb-safe`（最稳妥的安全区处理位置）。
+  - 卡牌区域：容器改为 `flex-1 min-h-0`，允许在短屏时收缩。
+  - 左右选项按钮：`choice-container` 增加 `shrink-0`，确保两侧选项在小屏下绝对露出、不被卡牌正文挤没。
+
+- **Ending/Failure（结算页）**：
+  - 根容器：`h-screen` -> `h-screen-fix`，并加 `pb-safe`。
+  - 底部 CTA 双保险：CTA 区额外包裹 `shrink-0 pb-safe`，防止未来改动导致按钮再次贴底/被遮挡。
+
+- **验收清单（必须验证）**：
+  - iPhone SE / 320x568：
+    - Identity 详情弹窗底部 CTA 可见可点。
+    - Playing 卡牌底部左右选项“选择：xxx”完整露出。
+    - BottomNav 不被手势条遮挡。
+    - Ending/Failure 底部 CTA 可见可点。
+  - iOS Safari / 微信内置浏览器：切换地址栏显示/隐藏时布局不跳出可用区域。
